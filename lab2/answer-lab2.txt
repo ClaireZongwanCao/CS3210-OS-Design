@@ -1,0 +1,128 @@
+1.Here x is a pointer and is deferenced so it must be a virtual address type. Each memory access is handled by MMU and MMU will automatically take each address as virtual address. x’s type is uintptr_t.
+
+2. Based on the virtual memory map in memlayout.h
+Entry	Base Virtual Address	Points to (logically):
+1023	0xFFC00000	Page table for top 4MB of phys memory
+1022    0xFF800000      Page table for second top 4MB of phys memory
+1021    0XFF400000      Page table for third top 4MB of phys memory
+...	...	...
+961     0xF0400000      Page table for second 4MB of phys memory
+960	0xF0000000	Page table for first 4MB of phys memory
+959	0xEFC00000	Page table for "Kernel Stack" (32K, start from 0xEFBF8000) and the "Invalid Memory" (4M-32K)
+957	0xEF400000	Current Page Table
+...	...	...
+1	0x00400000	Empty
+0	0x00000000	[see next question]
+
+3.Because the PTE_U bit is unset, user mode program can not access to kernel’s memory.
+
+4.The struct PageInfo consists of a 32-bits pointer and a 16-bits unsigned int. With default alignment, the sizeof(PageInfo) is 8 bytes. 
+1024 * 4KB / 8B = 512K
+There is 512K PageInfo structures stored in a PTSIZE page. 
+512K * 4KB = 2GB
+The maximum amount of physical memory is 2GB.
+
+5.We need 4MB PageInfos to manage memory, 2MB for Page Table and 4KB for Page Directory.
+Thus the total size is:6MB+4KB
+
+6.After jmp *%eax finished. BIOS can only access lower address while later kernel jobs need to access more space, so this translation is very necessary.
+
+Challenge: I finished the second challenge
+1. I implemented mon_showmappings() in the monitor.c. This function utilizes pgdir_walk, loop through every page mapped and print out its virtual address, physical address and permissions.
+In the command line, when we type “showmappings start_virtual_address end_virtual_address” , it will show the physical page mapping from start_va to end_va. See the following:
+K> showmappings 0x20000 0x21000
+page not mapped
+page not mapped
+K> showmappings 0xe1000000 0xe1001000
+page not mapped
+page not mapped
+K> showmappings 0xf0000000 0xf0010000
+va: f0000000  pa: 00000000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0001000  pa: 00001000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0002000  pa: 00002000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0003000  pa: 00003000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0004000  pa: 00004000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0005000  pa: 00005000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0006000  pa: 00006000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0007000  pa: 00007000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0008000  pa: 00008000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0009000  pa: 00009000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f000a000  pa: 0000a000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f000b000  pa: 0000b000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f000c000  pa: 0000c000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f000d000  pa: 0000d000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f000e000  pa: 0000e000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f000f000  pa: 0000f000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+va: f0010000  pa: 00010000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+K> showmappings 0xef000000 0xef010000
+va: ef000000  pa: 00119000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef001000  pa: 0011a000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef002000  pa: 0011b000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef003000  pa: 0011c000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef004000  pa: 0011d000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef005000  pa: 0011e000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef006000  pa: 0011f000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef007000  pa: 00120000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef008000  pa: 00121000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef009000  pa: 00122000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef00a000  pa: 00123000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef00b000  pa: 00124000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef00c000  pa: 00125000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef00d000  pa: 00126000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef00e000  pa: 00127000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef00f000  pa: 00128000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+va: ef010000  pa: 00129000  PTE_P: 1  PTE_U: 4  PTE_W: 0
+
+2.I implemented mon_setperm() in the monitor.c. This function changes pte of target address based on user’s input
+In the command line, when we type “setperm target_virtual_address 0/1 P/W/U” , it will change(0: clear, 1: set) permission (P: PTE_P, U: PTE_U, W: PTE_W) of target v_address. See the following:
+K> setperm 0xf0000000 0 W        
+va: f0000000  pa: 00000000  PTE_P: 1  PTE_U: 0  PTE_W: 0
+K> setperm 0xf0000000 1 W 
+va: f0000000  pa: 00000000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+K> setperm 0xf0010000 1 U
+va: f0010000  pa: 00010000  PTE_P: 1  PTE_U: 4  PTE_W: 2
+K> setperm 0xf0010000 0 U
+va: f0010000  pa: 00010000  PTE_P: 1  PTE_U: 0  PTE_W: 2
+
+3.I implemented mon_dumpv() for virtual memory dump and mon_dumpp() for physical memory dump. For VM dump, we just need to print out the content which the VA points to. For PM dump, we need to transform VA to PV via KADDR, then print out the content that the PA points to.
+In the command line, when we type “dumpv start_virtual_address end_virtual_address” , it will show the content stored in range [start_va, end_va]. when we type “dumpp start_virtual_address end_virtual_address” , it will show the content stored in range [KADDR(start_va), KADDR(end_va)].See the following:
+K> dumpp 0x0011e000 0x0011e010
+Physical Memory Dump
+pm at f011e000 is fffffff8
+pm at f011e001 is ffffffdf
+pm at f011e002 is 00000011
+pm at f011e003 is fffffff0
+pm at f011e004 is 00000000
+pm at f011e005 is 00000000
+pm at f011e006 is 00000000
+pm at f011e007 is 00000000
+pm at f011e008 is 00000000
+pm at f011e009 is ffffffe0
+pm at f011e00a is 00000011
+pm at f011e00b is fffffff0
+pm at f011e00c is 00000000
+pm at f011e00d is 00000000
+pm at f011e00e is 00000000
+pm at f011e00f is 00000000
+pm at f011e010 is 00000008
+K> dumpv 0xf0120000 0xf0120010
+Virtual Memory Dump
+vm at f0120000 is fffffff8
+vm at f0120001 is ffffffff
+vm at f0120002 is 00000011
+vm at f0120003 is fffffff0
+vm at f0120004 is 00000000
+vm at f0120005 is 00000000
+vm at f0120006 is 00000000
+vm at f0120007 is 00000000
+vm at f0120008 is 00000000
+vm at f0120009 is 00000000
+vm at f012000a is 00000012
+vm at f012000b is fffffff0
+vm at f012000c is 00000000
+vm at f012000d is 00000000
+vm at f012000e is 00000000
+vm at f012000f is 00000000
+vm at f0120010 is 00000008
+
+4. gdb is enough. It is a little hard for me to come up with new idea for gdb.
